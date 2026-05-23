@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>真相雷達｜管理後台</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f4f6fb; --surface: #fff; --surface2: #f0f2f8;
+  --border: #e0e4ef; --text: #1a1d2e; --muted: #6b7291;
+  --accent: #1a7f5a; --accent-dim: rgba(34,201,135,.12);
+  --red: #d93025; --red-dim: rgba(217,48,37,.09);
+  --yellow: #b45309; --yellow-dim: rgba(180,83,9,.09);
+  --blue: #1a5fbe; --blue-dim: rgba(26,95,190,.09);
+  --green-dim: rgba(34,201,135,.09);
+  --r: 12px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'Noto Sans TC', sans-serif; display: flex; min-height: 100vh; }
+
+/* SIDEBAR */
+aside {
+  width: 220px; flex-shrink: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  padding: 24px 0;
+  position: sticky; top: 0; height: 100vh;
+}
+.logo { padding: 0 20px 24px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+.logo-title { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 16px; color: var(--accent); }
+.logo-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 20px; cursor: pointer;
+  font-size: 14px; color: var(--muted);
+  border-radius: 0; transition: all .15s;
+  border-left: 3px solid transparent;
+}
+.nav-item:hover { color: var(--text); background: var(--surface2); }
+.nav-item.active { color: var(--accent); background: var(--accent-dim); border-left-color: var(--accent); font-weight: 500; }
+.nav-icon { font-size: 16px; width: 20px; text-align: center; }
+aside .spacer { flex: 1; }
+.admin-info { padding: 16px 20px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); }
+.admin-email { font-weight: 500; color: var(--text); font-size: 13px; margin-bottom: 2px; word-break: break-all; }
+.logout-btn { background: none; border: none; color: var(--red); font-size: 12px; cursor: pointer; padding: 4px 0; font-family: inherit; }
+
+/* MAIN */
+main { flex: 1; padding: 32px; overflow-y: auto; }
+.page { display: none; }
+.page.active { display: block; animation: fadeIn .25s ease; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+.page-title { font-family: 'Space Grotesk', sans-serif; font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+.page-desc { font-size: 14px; color: var(--muted); margin-bottom: 24px; }
+
+/* STATS */
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px; }
+.stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 18px 20px; }
+.stat-num { font-family: 'Space Grotesk', sans-serif; font-size: 28px; font-weight: 700; color: var(--accent); }
+.stat-label { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+/* TABLE */
+.table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+.table-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+}
+.table-title { font-weight: 500; font-size: 15px; }
+.filter-row { display: flex; gap: 6px; }
+.filter-chip {
+  padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border);
+  background: none; font-size: 12px; color: var(--muted); cursor: pointer;
+  font-family: inherit; transition: all .15s;
+}
+.filter-chip.active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; padding: 10px 16px; font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; background: var(--surface2); border-bottom: 1px solid var(--border); }
+td { padding: 12px 16px; border-bottom: 1px solid var(--border); vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--surface2); }
+.td-content { max-width: 280px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.5; }
+.td-meta { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+/* BADGES */
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; white-space: nowrap; }
+.badge-pending   { background: var(--blue-dim);   color: var(--blue); }
+.badge-reviewing { background: var(--yellow-dim);  color: var(--yellow); }
+.badge-fake      { background: var(--red-dim);    color: var(--red); }
+.badge-true      { background: var(--green-dim);  color: var(--accent); }
+.badge-dismiss   { background: var(--surface2);   color: var(--muted); }
+
+/* ACTION BUTTONS */
+.action-btn {
+  padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border);
+  background: none; font-size: 12px; cursor: pointer; font-family: inherit;
+  color: var(--text); transition: all .15s; margin-right: 4px;
+}
+.action-btn:hover { background: var(--surface2); }
+.action-btn.danger { color: var(--red); border-color: rgba(217,48,37,.3); }
+.action-btn.success { color: var(--accent); border-color: rgba(34,201,135,.4); }
+
+/* MODAL */
+.modal-bg {
+  position: fixed; inset: 0; background: rgba(0,0,0,.35);
+  display: none; align-items: center; justify-content: center; z-index: 200;
+}
+.modal-bg.show { display: flex; }
+.modal {
+  background: var(--surface); border-radius: var(--r); padding: 28px;
+  width: 500px; max-width: 95vw; max-height: 80vh; overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,.15);
+}
+.modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
+.modal-content-preview {
+  background: var(--surface2); border-radius: 8px; padding: 12px 14px;
+  font-size: 13px; line-height: 1.7; margin-bottom: 16px; max-height: 150px; overflow-y: auto;
+}
+.form-group { margin-bottom: 14px; }
+.form-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; display: block; }
+.form-select, .form-textarea {
+  width: 100%; background: var(--surface2); border: 1.5px solid var(--border);
+  border-radius: 8px; padding: 10px 12px; font-family: inherit; font-size: 13px;
+  color: var(--text); outline: none; appearance: none;
+}
+.form-select:focus, .form-textarea:focus { border-color: var(--accent); }
+.form-textarea { resize: vertical; min-height: 70px; }
+.modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+.btn { padding: 9px 18px; border-radius: 8px; border: none; cursor: pointer; font-size: 14px; font-family: inherit; font-weight: 500; transition: opacity .15s; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn:hover { opacity: .85; }
+
+/* CACHE TABLE */
+.cache-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.cache-row:last-child { border-bottom: none; }
+.cache-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 12px; }
+.hit-badge { background: var(--accent-dim); color: var(--accent); font-size: 11px; padding: 2px 8px; border-radius: 10px; flex-shrink: 0; }
+
+/* LOGIN SCREEN */
+#loginScreen {
+  position: fixed; inset: 0; background: var(--bg);
+  display: flex; align-items: center; justify-content: center; z-index: 300;
+}
+.login-box {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 36px; width: 380px;
+}
+.login-title { font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+.login-sub { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+.form-input {
+  width: 100%; background: var(--surface2); border: 1.5px solid var(--border);
+  border-radius: 8px; padding: 11px 13px; font-family: inherit; font-size: 14px;
+  color: var(--text); outline: none; margin-bottom: 12px;
+}
+.form-input:focus { border-color: var(--accent); }
+.login-btn { width: 100%; background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 12px; font-size: 14px; font-weight: 700; font-family: inherit; cursor: pointer; }
+.login-err { font-size: 13px; color: var(--red); margin-top: 10px; text-align: center; display: none; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-title">📡 真相雷達</div>
+    <div class="login-sub">管理員後台登入</div>
+    <input class="form-input" id="loginEmail" type="email" placeholder="管理員 Email" />
+    <input class="form-input" id="loginPassword" type="password" placeholder="密碼" />
+    <button class="login-btn" onclick="doLogin()">登入</button>
+    <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<aside>
+  <div class="logo">
+    <div class="logo-title">📡 真相雷達</div>
+    <div class="logo-sub">管理後台</div>
+  </div>
+  <div class="nav-item active" onclick="showPage('dashboard', this)"><span class="nav-icon">📊</span> 總覽</div>
+  <div class="nav-item" onclick="showPage('reports', this)"><span class="nav-icon">📋</span> 回報管理</div>
+  <div class="nav-item" onclick="showPage('cache', this)"><span class="nav-icon">⚡</span> 快取管理</div>
+  <div class="nav-item" onclick="showPage('users', this)"><span class="nav-icon">👥</span> 用戶管理</div>
+  <div class="spacer"></div>
+  <div class="admin-info">
+    <div class="admin-email" id="adminEmail">載入中…</div>
+    <button class="logout-btn" onclick="doLogout()">登出</button>
+  </div>
+</aside>
+
+<main>
+  <!-- DASHBOARD -->
+  <div class="page active" id="page-dashboard">
+    <div class="page-title">總覽</div>
+    <div class="page-desc">系統即時狀態一覽</div>
+    <div class="stats-grid">
+      <div class="stat"><div class="stat-num" id="st-total">—</div><div class="stat-label">總回報數</div></div>
+      <div class="stat"><div class="stat-num" id="st-pending">—</div><div class="stat-label">待審核</div></div>
+      <div class="stat"><div class="stat-num" id="st-cache">—</div><div class="stat-label">快取筆數</div></div>
+      <div class="stat"><div class="stat-num" id="st-users">—</div><div class="stat-label">總用戶數</div></div>
+    </div>
+    <div class="table-wrap">
+      <div class="table-header"><span class="table-title">最新回報（前 5 筆）</span></div>
+      <table><thead><tr><th>內容</th><th>狀態</th><th>時間</th></tr></thead>
+      <tbody id="dashRecentBody"></tbody></table>
+    </div>
+  </div>
+
+  <!-- REPORTS -->
+  <div class="page" id="page-reports">
+    <div class="page-title">回報管理</div>
+    <div class="page-desc">審核民眾送出的可疑訊息</div>
+    <div class="table-wrap">
+      <div class="table-header">
+        <span class="table-title">所有回報</span>
+        <div class="filter-row">
+          <button class="filter-chip active" onclick="filterReports(this,'')">全部</button>
+          <button class="filter-chip" onclick="filterReports(this,'pending')">待審</button>
+          <button class="filter-chip" onclick="filterReports(this,'reviewing')">審核中</button>
+          <button class="filter-chip" onclick="filterReports(this,'confirmed_fake')">假訊息</button>
+          <button class="filter-chip" onclick="filterReports(this,'dismissed')">不受理</button>
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>訊息內容</th><th>類型</th><th>狀態</th><th>回報時間</th><th>操作</th></tr></thead>
+        <tbody id="reportsBody"><tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted)">載入中…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- CACHE -->
+  <div class="page" id="page-cache">
+    <div class="page-title">快取管理</div>
+    <div class="page-desc">Cofacts API 查核結果快取，加速用戶查詢速度</div>
+    <div class="stats-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="stat"><div class="stat-num" id="cache-total">—</div><div class="stat-label">快取總數</div></div>
+      <div class="stat"><div class="stat-num" id="cache-expired">—</div><div class="stat-label">已過期</div></div>
+      <div class="stat" style="display:flex;align-items:center">
+        <button class="btn btn-primary" onclick="purgeCache()" style="width:100%">🗑 清除過期快取</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <div class="table-header"><span class="table-title">查詢熱門榜（Top 10）</span></div>
+      <div style="padding:4px 20px 12px" id="cacheTopList"></div>
+    </div>
+  </div>
+
+  <!-- USERS -->
+  <div class="page" id="page-users">
+    <div class="page-title">用戶管理</div>
+    <div class="page-desc">管理用戶角色與權限</div>
+    <div class="table-wrap">
+      <div class="table-header"><span class="table-title">用戶列表</span></div>
+      <table>
+        <thead><tr><th>Email</th><th>暱稱</th><th>角色</th><th>加入時間</th><th>操作</th></tr></thead>
+        <tbody id="usersBody"><tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted)">載入中…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<!-- REVIEW MODAL -->
+<div class="modal-bg" id="reviewModal">
+  <div class="modal">
+    <h3>審核回報</h3>
+    <div class="modal-content-preview" id="modalContent"></div>
+    <div class="form-group">
+      <label class="form-label">更新狀態</label>
+      <select class="form-select" id="modalStatus">
+        <option value="reviewing">審核中</option>
+        <option value="confirmed_fake">確認為假訊息</option>
+        <option value="confirmed_true">確認屬實</option>
+        <option value="dismissed">不受理</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">管理員備註（回報者可見）</label>
+      <textarea class="form-textarea" id="modalNote" placeholder="填寫查核說明或不受理原因…"></textarea>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="submitReview()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+// ── 換成你的 Supabase 資訊 ─────────────────────────────────────
+const SUPABASE_URL  = 'https://jbkirzfdshmruhuymaom.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impia2lyemZkc2htcnVodXltYW9tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1MTY1NDAsImV4cCI6MjA5NTA5MjU0MH0.rP8Ch6tSJ3qnQAAjBqIVlCef1Nm5LS_NmBwiDnECQGQ';
+// ─────────────────────────────────────────────────────────────
+
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
+let currentUser = null;
+let currentReportId = null;
+let currentReportFilter = '';
+
+const STATUS_BADGE = {
+  pending:        '<span class="badge badge-pending">⏳ 待審</span>',
+  reviewing:      '<span class="badge badge-reviewing">🔍 審核中</span>',
+  confirmed_fake: '<span class="badge badge-fake">❌ 假訊息</span>',
+  confirmed_true: '<span class="badge badge-true">✅ 屬實</span>',
+  dismissed:      '<span class="badge badge-dismiss">— 不受理</span>',
+};
+
+// ── AUTH ──────────────────────────────────────────────────────
+window.doLogin = async () => {
+  const email    = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const errEl    = document.getElementById('loginErr');
+  errEl.style.display = 'none';
+
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) { errEl.textContent = '帳號或密碼錯誤'; errEl.style.display = 'block'; return; }
+
+  const { data: profile } = await sb.from('profiles').select('role').eq('id', data.user.id).single();
+  if (profile?.role !== 'admin') {
+    await sb.auth.signOut();
+    errEl.textContent = '此帳號無管理員權限'; errEl.style.display = 'block'; return;
+  }
+
+  currentUser = data.user;
+  document.getElementById('adminEmail').textContent = email;
+  document.getElementById('loginScreen').style.display = 'none';
+  loadDashboard(); loadReports(); loadCache(); loadUsers();
+};
+
+window.doLogout = async () => {
+  await sb.auth.signOut();
+  location.reload();
+};
+
+// ── NAVIGATION ────────────────────────────────────────────────
+window.showPage = (id, el) => {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  el.classList.add('active');
+};
+
+// ── DASHBOARD ────────────────────────────────────────────────
+async function loadDashboard() {
+  const { count: total }   = await sb.from('reports').select('*', { count:'exact', head:true });
+  const { count: pending } = await sb.from('reports').select('*', { count:'exact', head:true }).eq('status','pending');
+  const { count: cache }   = await sb.from('query_cache').select('*', { count:'exact', head:true });
+  const { count: users }   = await sb.from('profiles').select('*', { count:'exact', head:true });
+
+  document.getElementById('st-total').textContent   = total ?? '—';
+  document.getElementById('st-pending').textContent = pending ?? '—';
+  document.getElementById('st-cache').textContent   = cache ?? '—';
+  document.getElementById('st-users').textContent   = users ?? '—';
+
+  const { data: recent } = await sb.from('reports')
+    .select('content, status, created_at').order('created_at', { ascending: false }).limit(5);
+
+  document.getElementById('dashRecentBody').innerHTML = (recent ?? []).map(r => `
+    <tr>
+      <td><div class="td-content">${esc(r.content)}</div></td>
+      <td>${STATUS_BADGE[r.status] ?? r.status}</td>
+      <td><div class="td-meta">${r.created_at?.slice(0,10)}</div></td>
+    </tr>`).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:24px">尚無回報</td></tr>';
+}
+
+// ── REPORTS ───────────────────────────────────────────────────
+window.filterReports = (btn, status) => {
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  currentReportFilter = status;
+  loadReports();
+};
+
+async function loadReports() {
+  let q = sb.from('reports')
+    .select('id, content, category, status, created_at, user_note')
+    .order('created_at', { ascending: false }).limit(100);
+  if (currentReportFilter) q = q.eq('status', currentReportFilter);
+  const { data } = await q;
+
+  document.getElementById('reportsBody').innerHTML = (data ?? []).map(r => `
+    <tr>
+      <td>
+        <div class="td-content">${esc(r.content)}</div>
+        ${r.user_note ? `<div class="td-meta">用戶備註：${esc(r.user_note)}</div>` : ''}
+      </td>
+      <td><div class="td-meta">${esc(r.category ?? '—')}</div></td>
+      <td>${STATUS_BADGE[r.status] ?? r.status}</td>
+      <td><div class="td-meta">${r.created_at?.slice(0,10)}</div></td>
+      <td>
+        <button class="action-btn" onclick="openReview('${r.id}','${esc(r.content.slice(0,200))}','${r.status}')">審核</button>
+      </td>
+    </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:32px">此狀態無回報</td></tr>';
+}
+
+// ── REVIEW MODAL ─────────────────────────────────────────────
+window.openReview = (id, content, status) => {
+  currentReportId = id;
+  document.getElementById('modalContent').textContent = content;
+  document.getElementById('modalStatus').value = status !== 'pending' ? status : 'reviewing';
+  document.getElementById('modalNote').value = '';
+  document.getElementById('reviewModal').classList.add('show');
+};
+window.closeModal = () => document.getElementById('reviewModal').classList.remove('show');
+
+window.submitReview = async () => {
+  const status    = document.getElementById('modalStatus').value;
+  const adminNote = document.getElementById('modalNote').value.trim();
+  await sb.from('reports').update({
+    status, admin_note: adminNote || null,
+    reviewed_by: currentUser.id, reviewed_at: new Date().toISOString()
+  }).eq('id', currentReportId);
+
+  await sb.from('admin_logs').insert({
+    admin_id: currentUser.id, action: 'review',
+    target_type: 'report', target_id: currentReportId,
+    detail: { status, adminNote }
+  });
+
+  closeModal();
+  loadReports(); loadDashboard();
+};
+
+// ── CACHE ────────────────────────────────────────────────────
+async function loadCache() {
+  const { count: total }   = await sb.from('query_cache').select('*', { count:'exact', head:true });
+  const { count: expired } = await sb.from('query_cache').select('*', { count:'exact', head:true }).lt('expires_at', new Date().toISOString());
+  const { data: top }      = await sb.from('query_cache').select('query_text, hit_count, verdict').order('hit_count', { ascending:false }).limit(10);
+
+  document.getElementById('cache-total').textContent   = total ?? '—';
+  document.getElementById('cache-expired').textContent = expired ?? '—';
+
+  const VERDICT_LABEL = { RUMOR:'❌ 假訊息', USEFUL:'✅ 屬實', OPINIONATED:'⚠️ 含爭議', NOT_ARTICLE:'⚠️ 非完整', unknown:'❓ 待查' };
+  document.getElementById('cacheTopList').innerHTML = (top ?? []).map(c => `
+    <div class="cache-row">
+      <span class="cache-text">${esc(c.query_text ?? '').slice(0,60)}</span>
+      <span style="font-size:12px;color:var(--muted);margin-right:8px">${VERDICT_LABEL[c.verdict] ?? c.verdict}</span>
+      <span class="hit-badge">🔥 ${c.hit_count} 次</span>
+    </div>`).join('') || '<div style="padding:16px;color:var(--muted);font-size:13px">尚無快取資料</div>';
+}
+
+window.purgeCache = async () => {
+  const { error } = await sb.rpc('purge_expired_cache');
+  if (error) { alert('清除失敗：' + error.message); return; }
+  alert('已清除過期快取！');
+  loadCache(); loadDashboard();
+};
+
+// ── USERS ────────────────────────────────────────────────────
+async function loadUsers() {
+  const { data } = await sb.from('profiles').select('id, email, nickname, role, created_at').order('created_at', { ascending:false });
+  document.getElementById('usersBody').innerHTML = (data ?? []).map(u => `
+    <tr>
+      <td>${esc(u.email ?? '—')}</td>
+      <td>${esc(u.nickname ?? '—')}</td>
+      <td><span class="badge ${u.role === 'admin' ? 'badge-fake' : 'badge-pending'}">${u.role === 'admin' ? '👑 管理員' : '👤 用戶'}</span></td>
+      <td><div class="td-meta">${u.created_at?.slice(0,10)}</div></td>
+      <td>
+        ${u.role !== 'admin'
+          ? `<button class="action-btn success" onclick="setRole('${u.id}','admin')">升為管理員</button>`
+          : `<button class="action-btn danger"  onclick="setRole('${u.id}','user')">移除權限</button>`}
+      </td>
+    </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:32px">尚無用戶</td></tr>';
+}
+
+window.setRole = async (userId, role) => {
+  if (!confirm(`確認要將此用戶改為 ${role}？`)) return;
+  await sb.from('profiles').update({ role }).eq('id', userId);
+  await sb.from('admin_logs').insert({
+    admin_id: currentUser.id, action: 'role_change',
+    target_type: 'user', target_id: userId, detail: { role }
+  });
+  loadUsers();
+};
+
+// ── UTILS ────────────────────────────────────────────────────
+function esc(str) {
+  return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
