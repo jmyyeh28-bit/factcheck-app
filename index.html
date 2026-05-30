@@ -513,7 +513,7 @@ async function cofactsQuery(query, variables = {}) {
 const SEARCH_ARTICLES_KEYWORD = `
   query SearchArticles($text: String!) {
     ListArticles(
-      filter: { articleReplies: { statuses: [NORMAL] }, moreLikeThis: { like: $text, minimumShouldMatch: "1%" } }
+      filter: { moreLikeThis: { like: $text, minimumShouldMatch: "1%" } }
       orderBy: [{ _score: DESC }]
       first: 5
     ) {
