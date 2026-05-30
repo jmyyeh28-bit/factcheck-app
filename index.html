@@ -534,6 +534,10 @@ const SEARCH_ARTICLES_KEYWORD = `
             positiveFeedbackCount
             negativeFeedbackCount
           }
+          aiReplies {
+            text
+            type
+          }
         }
       }
     }
@@ -563,6 +567,10 @@ const SEARCH_ARTICLES = `
             }
             positiveFeedbackCount
             negativeFeedbackCount
+          }
+          aiReplies {
+            text
+            type
           }
         }
       }
@@ -613,10 +621,16 @@ function verdictFromReplies(articleReplies) {
   return Object.entries(counts).sort((a,b) => b[1]-a[1])[0][0];
 }
 
-function bestReplyText(articleReplies) {
-  if (!articleReplies || articleReplies.length === 0) return null;
-  return [...articleReplies]
-    .sort((a,b) => (b.positiveFeedbackCount||0) - (a.positiveFeedbackCount||0))[0].reply.text;
+function bestReplyText(articleReplies, aiReplies) {
+  // 優先用人工查核文字
+  const best = [...(articleReplies || [])]
+    .sort((a,b) => (b.positiveFeedbackCount||0) - (a.positiveFeedbackCount||0))[0];
+  if (best?.reply?.text) return best.reply.text;
+  // 人工查核沒有文字時，用 AI 回應補充
+  if (aiReplies && aiReplies.length > 0 && aiReplies[0].text) {
+    return '【AI 輔助摘要】' + aiReplies[0].text;
+  }
+  return null;
 }
 
 // ─── 分頁與狀態 ────────────────────────────────────────────────────
@@ -689,10 +703,10 @@ function renderCheckResult(q, data) {
   } else {
     const node = topEdge.node;
     verdictKey = verdictFromReplies(node.articleReplies);
-    const replyText = bestReplyText(node.articleReplies);
+    const replyText = bestReplyText(node.articleReplies, node.aiReplies);
     summaryText = replyText
       ? replyText.slice(0, 300) + (replyText.length > 300 ? '…' : '')
-      : '查核人員已標記此訊息，但尚無詳細說明文字。';
+      : '此訊息已被回報至 Cofacts，目前查核人員尚未留下說明文字，建議至 cofacts.tw 查看最新進度。';
 
     // 收集參考來源
     for (const ar of node.articleReplies || []) {
