@@ -509,7 +509,37 @@ async function cofactsQuery(query, variables = {}) {
   return json.data;
 }
 
-// 搜尋訊息 + 取得回應
+// 搜尋訊息 + 取得回應（雙策略：先關鍵字，再語意相似）
+const SEARCH_ARTICLES_KEYWORD = `
+  query SearchArticles($text: String!) {
+    ListArticles(
+      filter: { articleReplies: { statuses: [NORMAL] }, moreLikeThis: { like: $text, minimumShouldMatch: "1%" } }
+      orderBy: [{ _score: DESC }]
+      first: 5
+    ) {
+      edges {
+        score
+        node {
+          id
+          text
+          articleType
+          createdAt
+          articleReplies(status: NORMAL) {
+            reply {
+              id
+              type
+              text
+              reference
+            }
+            positiveFeedbackCount
+            negativeFeedbackCount
+          }
+        }
+      }
+    }
+  }
+`;
+
 const SEARCH_ARTICLES = `
   query SearchArticles($text: String!) {
     ListArticles(
@@ -603,7 +633,7 @@ function showSection(id) {
   if (id === 'database' && !dbLoaded) loadDatabase();
 }
 
-// ─── 查核功能（串接 Cofacts API）────────────────────────────────────
+// ─── 查核功能（雙策略：寬鬆關鍵字 + 語意相似）────────────────────
 function doCheck() {
   const q = document.getElementById('searchInput').value.trim();
   if (!q) { document.getElementById('searchInput').focus(); return; }
@@ -613,7 +643,6 @@ function doCheck() {
   lc.classList.add('show');
   ['ls1','ls2','ls3','ls4'].forEach(id => document.getElementById(id).classList.remove('visible'));
 
-  // 逐步顯示載入提示
   const steps = ['ls1','ls2','ls3','ls4'];
   let step = 0;
   const iv = setInterval(() => {
@@ -621,11 +650,22 @@ function doCheck() {
     else clearInterval(iv);
   }, 600);
 
-  cofactsQuery(SEARCH_ARTICLES, { text: q })
+  // 先用寬鬆關鍵字搜尋（有回應就用），沒結果再用語意搜尋
+  cofactsQuery(SEARCH_ARTICLES_KEYWORD, { text: q })
     .then(data => {
-      clearInterval(iv);
-      steps.forEach(id => document.getElementById(id).classList.add('visible'));
-      setTimeout(() => renderCheckResult(q, data), 400);
+      const edges = data?.ListArticles?.edges || [];
+      if (edges.length > 0) {
+        clearInterval(iv);
+        steps.forEach(id => document.getElementById(id).classList.add('visible'));
+        setTimeout(() => renderCheckResult(q, data), 400);
+      } else {
+        // fallback：語意搜尋
+        return cofactsQuery(SEARCH_ARTICLES, { text: q }).then(data2 => {
+          clearInterval(iv);
+          steps.forEach(id => document.getElementById(id).classList.add('visible'));
+          setTimeout(() => renderCheckResult(q, data2), 400);
+        });
+      }
     })
     .catch(err => {
       clearInterval(iv);
@@ -642,7 +682,7 @@ function renderCheckResult(q, data) {
 
   let verdictKey, summaryText, refs = [];
 
-  if (!topEdge || topEdge.score < 1) {
+  if (!topEdge || topEdge.score < 0.1) {
     // 沒找到相似訊息
     verdictKey = 'unknown';
     summaryText = '目前 Cofacts 資料庫中沒有找到與此訊息高度相似的查核紀錄。此訊息可能尚未被回報或查核。建議保持謹慎，歡迎透過「回報」頁面協助送出。';
