@@ -8,7 +8,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 // ── 設定（上線前換成你的 Supabase 專案資訊）────────────────────
 const SUPABASE_URL  = 'https://jbkirzfdshmruhuymaom.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impia2lyemZkc2htcnVodXltYW9tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1MTY1NDAsImV4cCI6MjA5NTA5MjU0MH0.rP8Ch6tSJ3qnQAAjBqIVlCef1Nm5LS_NmBwiDnECQGQ';
-const COFACTS_API   = 'https://api.cofacts.tw/graphql';
+const COFACTS_API   = 'https://cofacts-proxy2.jmyyeh28.workers.dev';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
 
